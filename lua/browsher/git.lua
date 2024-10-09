@@ -167,7 +167,18 @@ function M.get_file_relative_path()
     if filepath == "" then
         return nil, "No file to open"
     end
-    local relpath = vim.fn.fnamemodify(filepath, ":." .. git_root)
+
+    filepath = vim.fn.fnamemodify(filepath, ":p")
+    git_root = vim.fn.fnamemodify(git_root, ":p")
+
+    git_root = git_root:gsub("[/\\]$", "")
+
+    if filepath:sub(1, #git_root) ~= git_root then
+        return nil, "File is not inside the git repository"
+    end
+
+    local relpath = filepath:sub(#git_root + 2)
+
     relpath = relpath:gsub("\\", "/")
     return relpath
 end
