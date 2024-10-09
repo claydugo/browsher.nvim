@@ -65,20 +65,23 @@ function M.open_in_browser()
   end
 
   if branch_or_tag == default_branch then
-    -- Try to get the latest tag
     local latest_tag, tag_err = git.get_latest_tag()
     if latest_tag then
       branch_or_tag = latest_tag
     else
-      -- Proceed with default_branch but notify about the issue
       vim.notify('Latest tag not found: ' .. tag_err, vim.log.levels.WARN)
     end
   end
 
-  -- Get the current line number if in normal mode
+  local has_changes = git.has_uncommitted_changes(relpath)
   local line_number = nil
-  if vim.api.nvim_get_mode().mode == 'n' then
-    line_number = vim.api.nvim_win_get_cursor(0)[1]
+
+  if has_changes then
+    vim.notify('Warning: Uncommitted changes detected in this file. Line number will not be used.', vim.log.levels.WARN)
+  else
+    if vim.api.nvim_get_mode().mode == 'n' then
+      line_number = vim.api.nvim_win_get_cursor(0)[1]
+    end
   end
 
   local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath, line_number)

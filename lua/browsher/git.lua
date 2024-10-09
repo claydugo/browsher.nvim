@@ -78,4 +78,13 @@ function M.branch_exists(branch_name)
   return false
 end
 
+function M.has_uncommitted_changes(relpath)
+  local cmd = 'git diff --name-only -- ' .. vim.fn.shellescape(relpath)
+  local output = vim.fn.systemlist(cmd)
+  if vim.v.shell_error ~= 0 then
+    return false -- Assume no changes if an error occurs
+  end
+  return #output > 0
+end
+
 return M
