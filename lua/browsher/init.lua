@@ -19,7 +19,11 @@ local function open_url(url)
 
   -- Open the URL in the default web browser
   vim.fn.jobstart({open_cmd, url}, {detach = true})
-  vim.notify('Opening ' .. url)
+
+  -- Show the message if the option is enabled
+  if config.options.show_message then
+    vim.notify('Opening ' .. url)
+  end
 end
 
 function M.open_in_browser()
@@ -47,9 +51,11 @@ function M.open_in_browser()
     return
   end
 
+  -- Check if the current branch is the user-defined default branch
   local default_branch = config.options.default_branch
   local branch_exists = git.branch_exists(default_branch)
   if not branch_exists then
+    -- Fallback to 'master' if default branch doesn't exist
     default_branch = 'master'
     branch_exists = git.branch_exists(default_branch)
     if not branch_exists then
@@ -59,15 +65,23 @@ function M.open_in_browser()
   end
 
   if branch_or_tag == default_branch then
+    -- Try to get the latest tag
     local latest_tag, tag_err = git.get_latest_tag()
     if latest_tag then
       branch_or_tag = latest_tag
     else
+      -- Proceed with default_branch but notify about the issue
       vim.notify('Latest tag not found: ' .. tag_err, vim.log.levels.WARN)
     end
   end
 
-  local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath)
+  -- Get the current line number if in normal mode
+  local line_number = nil
+  if vim.api.nvim_get_mode().mode == 'n' then
+    line_number = vim.api.nvim_win_get_cursor(0)[1]
+  end
+
+  local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath, line_number)
   if not url then
     vim.notify(err, vim.log.levels.ERROR)
     return
