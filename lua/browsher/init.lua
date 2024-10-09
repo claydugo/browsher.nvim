@@ -17,16 +17,14 @@ local function open_url(url)
     return
   end
 
-  -- Open the URL in the default web browser
   vim.fn.jobstart({open_cmd, url}, {detach = true})
 
-  -- Show the message if the option is enabled
   if config.options.show_message then
     vim.notify('Opening ' .. url)
   end
 end
 
-function M.open_in_browser()
+function M.open_in_browser(mode)
   local git_root, err = git.get_git_root()
   if not git_root then
     vim.notify(err, vim.log.levels.ERROR)
@@ -51,15 +49,15 @@ function M.open_in_browser()
     return
   end
 
-  -- Check if the current branch is the user-defined default branch
   local default_branch = config.options.default_branch
   local branch_exists = git.branch_exists(default_branch)
   if not branch_exists then
-    -- Fallback to 'master' if default branch doesn't exist
-    default_branch = 'master'
-    branch_exists = git.branch_exists(default_branch)
-    if not branch_exists then
-      vim.notify('Neither default branch nor master exists', vim.log.levels.ERROR)
+    local main_exists = git.branch_exists('main')
+	local master_exists = git.branch_exists('master')
+
+	default_branch = main_exists and 'main' or master_exists and 'master' or default_branch
+    if not main_exists and not master_exists then
+      vim.notify('Neither default branch nor main nor master exists', vim.log.levels.ERROR)
       return
     end
   end
@@ -69,22 +67,30 @@ function M.open_in_browser()
     if latest_tag then
       branch_or_tag = latest_tag
     else
-      vim.notify('Latest tag not found: ' .. tag_err, vim.log.levels.WARN)
+	  branch_or_tag = default_branch
     end
   end
 
   local has_changes = git.has_uncommitted_changes(relpath)
-  local line_number = nil
+  local line_info = nil
 
   if has_changes then
-    vim.notify('Warning: Uncommitted changes detected in this file. Line number will not be used.', vim.log.levels.WARN)
+    vim.notify('Warning: Uncommitted changes detected in this file. Line number removed from url.', vim.log.levels.WARN)
   else
-    if vim.api.nvim_get_mode().mode == 'n' then
-      line_number = vim.api.nvim_win_get_cursor(0)[1]
+    if mode == 'v' or mode == 'V' or mode == '\22' then
+      local start_line = vim.fn.line("'<")
+      local end_line = vim.fn.line("'>")
+      if start_line > end_line then
+        start_line, end_line = end_line, start_line
+      end
+      line_info = { start_line = start_line, end_line = end_line }
+    elseif mode == 'n' then
+      local line_number = vim.api.nvim_win_get_cursor(0)[1]
+      line_info = { line_number = line_number }
     end
   end
 
-  local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath, line_number)
+  local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath, line_info)
   if not url then
     vim.notify(err, vim.log.levels.ERROR)
     return

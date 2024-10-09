@@ -42,7 +42,6 @@ function M.get_current_branch()
   if branch and branch[1] ~= '' then
     return branch[1]
   end
-  -- Fallback to detached HEAD commit hash
   branch = systemlist('git rev-parse HEAD')
   if branch and branch[1] ~= '' then
     return branch[1]
@@ -82,7 +81,7 @@ function M.has_uncommitted_changes(relpath)
   local cmd = 'git diff --name-only -- ' .. vim.fn.shellescape(relpath)
   local output = vim.fn.systemlist(cmd)
   if vim.v.shell_error ~= 0 then
-    return false -- Assume no changes if an error occurs
+    return false
   end
   return #output > 0
 end
