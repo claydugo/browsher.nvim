@@ -9,6 +9,7 @@ M.options = {
 	default_remote = "origin",
 	default_branch = nil,
 	show_message = default_show_message,
+	default_pin = "commit",
 }
 
 function M.setup(user_options)

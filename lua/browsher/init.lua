@@ -23,7 +23,7 @@ local function get_open_command()
 	elseif vim.fn.has("unix") == 1 then
 		return "xdg-open"
 	elseif vim.fn.has("win32") == 1 then
-		return "start"
+		return { "explorer.exe" }
 	else
 		return nil
 	end
@@ -36,7 +36,11 @@ local function open_url(url)
 		return
 	end
 
-	vim.fn.jobstart({ open_cmd, url }, { detach = true })
+	if type(open_cmd) == "table" then
+		vim.fn.jobstart(vim.tbl_flatten({ open_cmd, url }), { detach = true })
+	else
+		vim.fn.jobstart({ open_cmd, url }, { detach = true })
+	end
 
 	if config.options.show_message then
 		notify("Opening " .. url)
@@ -44,13 +48,28 @@ local function open_url(url)
 end
 
 function M.open_in_browser(opts)
+	local args = {}
+	if opts.args then
+		for word in string.gmatch(opts.args, "%S+") do
+			table.insert(args, word)
+		end
+	end
+
+	local pin_type = args[1] or config.options.default_pin or "commit"
+	local specific_commit = args[2]
+
+	if pin_type ~= "commit" and pin_type ~= "branch" and pin_type ~= "tag" then
+		notify_error("Invalid argument. Use 'branch', 'tag', or 'commit'.")
+		return
+	end
+
 	local git_root, err = git.get_git_root()
 	if not git_root then
 		notify_error(err)
 		return
 	end
 
-	local relpath, err = git.get_file_relative_path(git_root)
+	local relpath, err = git.get_file_relative_path()
 	if not relpath then
 		notify_error(err)
 		return
@@ -63,35 +82,32 @@ function M.open_in_browser(opts)
 		return
 	end
 
-	local branch_or_tag, err = git.get_current_branch()
-	if not branch_or_tag then
-		notify_error(err)
-		return
-	end
-
-	local default_branch = config.options.default_branch
-	if not default_branch then
-		default_branch, err = git.get_default_branch(remote_name)
-		if not default_branch then
-			notify_error(err)
+	local branch_or_tag, err
+	if pin_type == "tag" then
+		branch_or_tag, err = git.get_latest_tag()
+		if not branch_or_tag then
+			notify_error(err or "Could not determine the latest tag")
 			return
 		end
-	end
-
-	if branch_or_tag == default_branch then
-		local latest_tag = git.get_latest_tag()
-		if latest_tag then
-			branch_or_tag = latest_tag
-		else
-			branch_or_tag = default_branch
-		end
-	else
-		local commit_hash, err = git.get_current_commit_hash()
-		if commit_hash then
-			branch_or_tag = commit_hash
-		else
-			notify_error(err or "Could not determine the latest commit hash")
+	elseif pin_type == "branch" then
+		branch_or_tag, err = git.get_current_branch()
+		if not branch_or_tag then
+			notify_error(err or "Could not determine the current branch")
 			return
+		end
+	elseif pin_type == "commit" then
+		if specific_commit then
+			if not specific_commit:match("^[0-9a-fA-F]+$") then
+				notify_error("Invalid commit hash format.")
+				return
+			end
+			branch_or_tag = specific_commit
+		else
+			branch_or_tag, err = git.get_current_commit_hash()
+			if not branch_or_tag then
+				notify_error(err or "Could not determine the latest commit hash")
+				return
+			end
 		end
 	end
 
@@ -101,7 +117,7 @@ function M.open_in_browser(opts)
 	if has_changes then
 		notify("Warning: Uncommitted changes detected in this file. Line number removed from URL.", vim.log.levels.WARN)
 	else
-		if opts and opts.range > 0 then
+		if opts.range then
 			local start_line = opts.line1
 			local end_line = opts.line2
 			if start_line > end_line then
