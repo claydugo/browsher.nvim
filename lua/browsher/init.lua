@@ -10,10 +10,6 @@ local function notify(message, level)
 	end)
 end
 
-local function notify_error(message)
-	notify(message, vim.log.levels.ERROR)
-end
-
 local function get_open_command()
 	if config.options.open_cmd then
 		return config.options.open_cmd
@@ -32,7 +28,7 @@ end
 local function open_url(url)
 	local open_cmd = get_open_command()
 	if not open_cmd then
-		notify_error("Unsupported OS")
+		notify("Unsupported OS", vim.log.levels.ERROR)
 		return
 	end
 
@@ -59,53 +55,53 @@ function M.open_in_browser(opts)
 	local specific_commit = args[2]
 
 	if pin_type ~= "commit" and pin_type ~= "branch" and pin_type ~= "tag" then
-		notify_error("Invalid argument. Use 'branch', 'tag', or 'commit'.")
+		notify("Invalid argument. Use 'branch', 'tag', or 'commit'.", vim.log.levels.ERROR)
 		return
 	end
 
-	local git_root, err = git.get_git_root()
+	local git_root, root_error = git.get_git_root()
 	if not git_root then
-		notify_error(err)
+		notify(root_error, vim.log.levels.ERROR)
 		return
 	end
 
-	local relpath, err = git.get_file_relative_path()
+	local relpath, path_error = git.get_file_relative_path()
 	if not relpath then
-		notify_error(err)
+		notify(path_error, vim.log.levels.ERROR)
 		return
 	end
 
 	local remote_name = config.options.default_remote or "origin"
-	local remote_url, err = git.get_remote_url(remote_name)
+	local remote_url, remote_error = git.get_remote_url(remote_name)
 	if not remote_url then
-		notify_error(err)
+		notify(remote_error, vim.log.levels.ERROR)
 		return
 	end
 
-	local branch_or_tag, err
+	local branch_or_tag, branch_or_tag_error = git.get_latest_tag()
 	if pin_type == "tag" then
-		branch_or_tag, err = git.get_latest_tag()
+		branch_or_tag, branch_or_tag_error = git.get_latest_tag()
 		if not branch_or_tag then
-			notify_error(err or "Could not determine the latest tag")
+			notify(branch_or_tag_error or "Could not determine the latest tag", vim.log.levels.ERROR)
 			return
 		end
 	elseif pin_type == "branch" then
-		branch_or_tag, err = git.get_current_branch()
+		branch_or_tag, branch_or_tag_error = git.get_current_branch()
 		if not branch_or_tag then
-			notify_error(err or "Could not determine the current branch")
+			notify(branch_or_tag_error or "Could not determine the current branch", vim.log.levels.ERROR)
 			return
 		end
 	elseif pin_type == "commit" then
 		if specific_commit then
 			if not specific_commit:match("^[0-9a-fA-F]+$") then
-				notify_error("Invalid commit hash format.")
+				notify("Invalid commit hash format.", vim.log.levels.ERROR)
 				return
 			end
 			branch_or_tag = specific_commit
 		else
-			branch_or_tag, err = git.get_current_commit_hash()
+			branch_or_tag, branch_or_tag_error = git.get_current_commit_hash()
 			if not branch_or_tag then
-				notify_error(err or "Could not determine the latest commit hash")
+				notify(branch_or_tag_error or "Could not determine the latest commit hash", vim.log.levels.ERROR)
 				return
 			end
 		end
@@ -132,7 +128,7 @@ function M.open_in_browser(opts)
 
 	local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath, line_info)
 	if not url then
-		notify_error(err)
+		notify(err, vim.log.levels.ERROR)
 		return
 	end
 
