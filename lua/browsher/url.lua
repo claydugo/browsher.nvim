@@ -1,4 +1,5 @@
 local M = {}
+local utils = require("browsher.utils")
 
 local function sanitize_remote_url(remote_url)
 	remote_url = remote_url:gsub("%.git$", "")
@@ -17,7 +18,11 @@ function M.build_url(remote_url, branch_or_tag, relpath, line_info)
 		url = string.format("%s/blob/%s/%s", remote_url, branch_or_tag, relpath)
 		if line_info then
 			if line_info.start_line and line_info.end_line then
-				url = url .. "#L" .. line_info.start_line .. "-L" .. line_info.end_line
+				if line_info.start_line == line_info.end_line then
+					url = url .. "#L" .. line_info.start_line
+				else
+					url = url .. "#L" .. line_info.start_line .. "-L" .. line_info.end_line
+				end
 			elseif line_info.line_number then
 				url = url .. "#L" .. line_info.line_number
 			end
@@ -26,13 +31,18 @@ function M.build_url(remote_url, branch_or_tag, relpath, line_info)
 		url = string.format("%s/-/blob/%s/%s", remote_url, branch_or_tag, relpath)
 		if line_info then
 			if line_info.start_line and line_info.end_line then
-				url = url .. "#L" .. line_info.start_line .. "-" .. line_info.end_line
+				if line_info.start_line == line_info.end_line then
+					url = url .. "#L" .. line_info.start_line
+				else
+					url = url .. "#L" .. line_info.start_line .. "-" .. line_info.end_line
+				end
 			elseif line_info.line_number then
 				url = url .. "#L" .. line_info.line_number
 			end
 		end
 	else
-		return nil, "Unsupported remote provider: " .. remote_url
+		utils.notify("Unsupported remote provider: " .. remote_url, vim.log.levels.ERROR)
+		return nil
 	end
 
 	return url

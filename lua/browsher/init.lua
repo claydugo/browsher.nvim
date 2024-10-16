@@ -1,23 +1,23 @@
 local git = require("browsher.git")
 local url_builder = require("browsher.url")
 local config = require("browsher.config")
+local utils = require("browsher.utils")
 
 local M = {}
 
-local function notify(message, level)
-	vim.schedule(function()
-		vim.notify(message, level)
-	end)
-end
-
 local function get_open_command()
 	if config.options.open_cmd then
-		return config.options.open_cmd
+		-- Ensure it's a table
+		if type(config.options.open_cmd) == "string" then
+			return { config.options.open_cmd }
+		else
+			return config.options.open_cmd
+		end
 	end
 	if vim.fn.has("macunix") == 1 then
-		return "open"
+		return { "open" }
 	elseif vim.fn.has("unix") == 1 then
-		return "xdg-open"
+		return { "xdg-open" }
 	elseif vim.fn.has("win32") == 1 then
 		return { "explorer.exe" }
 	else
@@ -28,18 +28,18 @@ end
 local function open_url(url)
 	local open_cmd = get_open_command()
 	if not open_cmd then
-		notify("Unsupported OS", vim.log.levels.ERROR)
+		utils.notify("Unsupported OS", vim.log.levels.ERROR)
 		return
 	end
 
-	if type(open_cmd) == "table" then
-		vim.fn.jobstart(vim.tbl_flatten({ open_cmd, url }), { detach = true })
-	else
-		vim.fn.jobstart({ open_cmd, url }, { detach = true })
-	end
+	-- Append the URL to the command
+	table.insert(open_cmd, url)
+
+	-- Start the job
+	vim.fn.jobstart(open_cmd, { detach = true })
 
 	if config.options.show_message then
-		notify("Opening " .. url)
+		utils.notify("Opening " .. url)
 	end
 end
 
@@ -55,53 +55,47 @@ function M.open_in_browser(opts)
 	local specific_commit = args[2]
 
 	if pin_type ~= "commit" and pin_type ~= "branch" and pin_type ~= "tag" then
-		notify("Invalid argument. Use 'branch', 'tag', or 'commit'.", vim.log.levels.ERROR)
+		utils.notify("Invalid argument. Use 'branch', 'tag', or 'commit'.", vim.log.levels.ERROR)
 		return
 	end
 
-	local git_root, root_error = git.get_git_root()
+	local git_root = git.get_git_root()
 	if not git_root then
-		notify(root_error, vim.log.levels.ERROR)
 		return
 	end
 
-	local relpath, path_error = git.get_file_relative_path()
+	local relpath = git.get_file_relative_path()
 	if not relpath then
-		notify(path_error, vim.log.levels.ERROR)
 		return
 	end
 
 	local remote_name = config.options.default_remote or "origin"
-	local remote_url, remote_error = git.get_remote_url(remote_name)
+	local remote_url = git.get_remote_url(remote_name)
 	if not remote_url then
-		notify(remote_error, vim.log.levels.ERROR)
 		return
 	end
 
-	local branch_or_tag, branch_or_tag_error = git.get_latest_tag()
+	local branch_or_tag
 	if pin_type == "tag" then
-		branch_or_tag, branch_or_tag_error = git.get_latest_tag()
+		branch_or_tag = git.get_latest_tag()
 		if not branch_or_tag then
-			notify(branch_or_tag_error or "Could not determine the latest tag", vim.log.levels.ERROR)
 			return
 		end
 	elseif pin_type == "branch" then
-		branch_or_tag, branch_or_tag_error = git.get_current_branch()
+		branch_or_tag = git.get_current_branch()
 		if not branch_or_tag then
-			notify(branch_or_tag_error or "Could not determine the current branch", vim.log.levels.ERROR)
 			return
 		end
 	elseif pin_type == "commit" then
 		if specific_commit then
 			if not specific_commit:match("^[0-9a-fA-F]+$") then
-				notify("Invalid commit hash format.", vim.log.levels.ERROR)
+				utils.notify("Invalid commit hash format.", vim.log.levels.ERROR)
 				return
 			end
 			branch_or_tag = specific_commit
 		else
-			branch_or_tag, branch_or_tag_error = git.get_current_commit_hash()
+			branch_or_tag = git.get_current_commit_hash()
 			if not branch_or_tag then
-				notify(branch_or_tag_error or "Could not determine the latest commit hash", vim.log.levels.ERROR)
 				return
 			end
 		end
@@ -111,7 +105,10 @@ function M.open_in_browser(opts)
 	local line_info = nil
 
 	if has_changes then
-		notify("Warning: Uncommitted changes detected in this file. Line number removed from URL.", vim.log.levels.WARN)
+		utils.notify(
+			"Warning: Uncommitted changes detected in this file. Line number removed from URL.",
+			vim.log.levels.WARN
+		)
 	else
 		if opts.range then
 			local start_line = opts.line1
@@ -119,16 +116,20 @@ function M.open_in_browser(opts)
 			if start_line > end_line then
 				start_line, end_line = end_line, start_line
 			end
-			line_info = { start_line = start_line, end_line = end_line }
+			if start_line == end_line then
+				-- Single-line range; treat as a single line
+				line_info = { line_number = start_line }
+			else
+				line_info = { start_line = start_line, end_line = end_line }
+			end
 		else
 			local line_number = vim.api.nvim_win_get_cursor(0)[1]
 			line_info = { line_number = line_number }
 		end
 	end
 
-	local url, err = url_builder.build_url(remote_url, branch_or_tag, relpath, line_info)
+	local url = url_builder.build_url(remote_url, branch_or_tag, relpath, line_info)
 	if not url then
-		notify(err, vim.log.levels.ERROR)
 		return
 	end
 
