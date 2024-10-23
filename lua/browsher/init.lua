@@ -102,31 +102,44 @@ function M.open_in_browser(opts)
 	end
 
 	local has_changes = git.has_uncommitted_changes(relpath)
-	local line_info = nil
+    local line_info = nil
 
-	if has_changes then
-		utils.notify(
-			"Warning: Uncommitted changes detected in this file. Line number removed from URL.",
-			vim.log.levels.WARN
-		)
-	else
-		if opts.range then
-			local start_line = opts.line1
-			local end_line = opts.line2
-			if start_line > end_line then
-				start_line, end_line = end_line, start_line
-			end
-			if start_line == end_line then
-				-- Single-line range; treat as a single line
-				line_info = { line_number = start_line }
-			else
-				line_info = { start_line = start_line, end_line = end_line }
-			end
-		else
-			local line_number = vim.api.nvim_win_get_cursor(0)[1]
-			line_info = { line_number = line_number }
-		end
-	end
+    if has_changes then
+        utils.notify(
+            "Warning: Uncommitted changes detected in this file. Line number removed from URL.",
+            vim.log.levels.WARN
+        )
+    else
+        if opts.range > 0 then
+            local start_line = opts.line1
+            local end_line = opts.line2
+            if start_line > end_line then
+                start_line, end_line = end_line, start_line
+            end
+            if start_line == end_line then
+                line_info = { line_number = start_line }
+            else
+                line_info = { start_line = start_line, end_line = end_line }
+            end
+        else
+            local mode = vim.fn.mode()
+            if mode == 'v' or mode == 'V' or mode == '\22' then
+                local start_line = vim.fn.line("v")
+                local end_line = vim.fn.line(".")
+                if start_line > end_line then
+                    start_line, end_line = end_line, start_line
+                end
+                if start_line == end_line then
+                    line_info = { line_number = start_line }
+                else
+                    line_info = { start_line = start_line, end_line = end_line }
+                end
+            else
+                local line_number = vim.api.nvim_win_get_cursor(0)[1]
+                line_info = { line_number = line_number }
+            end
+        end
+    end
 
 	local url = url_builder.build_url(remote_url, branch_or_tag, relpath, line_info)
 	if not url then
