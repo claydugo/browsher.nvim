@@ -1,13 +1,11 @@
 local M = {}
 local utils = require("browsher.utils")
 
--- Check if Git is available when the module is loaded
 if vim.fn.executable("git") ~= 1 then
 	utils.notify("Git is not installed or not in PATH. browsher.nvim will not function.", vim.log.levels.ERROR)
-	return M -- Return early; the module will be empty
+	return M
 end
 
--- Run a Git command and return its output or nil
 local function run_git_command(cmd, git_root)
 	if git_root then
 		cmd = string.format("git -C %s %s", vim.fn.shellescape(git_root), cmd)
@@ -32,14 +30,18 @@ function M.get_git_root()
 	return output[1]
 end
 
+function M.normalize_path(path)
+	return path:gsub("\\", "/")
+end
+
 function M.get_remote_url(remote_name)
-	remote_name = remote_name or "origin"
+	remote_name = remote_name or M.get_default_remote()
 	local git_root = M.get_git_root()
 	if not git_root then
 		return nil
 	end
 
-	local cmd = string.format("config --get remote.%s.url", remote_name)
+	local cmd = string.format("config --get remote.%s.url", vim.fn.shellescape(remote_name))
 	local output = run_git_command(cmd, git_root)
 	if not output or output[1] == "" then
 		utils.notify("No remote named '" .. remote_name .. "' is set.", vim.log.levels.ERROR)
@@ -48,7 +50,20 @@ function M.get_remote_url(remote_name)
 	return output[1]
 end
 
-function M.get_current_branch()
+function M.get_default_remote()
+	local git_root = M.get_git_root()
+	if not git_root then
+		return nil
+	end
+	local output = run_git_command("remote", git_root)
+	if output and #output > 0 then
+		return output[1]
+	end
+	utils.notify("No remotes found in the repository.", vim.log.levels.ERROR)
+	return nil
+end
+
+function M.get_current_branch_or_commit()
 	local git_root = M.get_git_root()
 	if not git_root then
 		return nil
@@ -56,12 +71,12 @@ function M.get_current_branch()
 
 	local output = run_git_command("symbolic-ref --short HEAD", git_root)
 	if output and output[1] ~= "" then
-		return output[1]
+		return output[1], "branch"
 	end
 
 	output = run_git_command("rev-parse --short HEAD", git_root)
 	if output and output[1] ~= "" then
-		return output[1]
+		return output[1], "commit"
 	end
 
 	utils.notify("Could not determine the current branch or commit hash.", vim.log.levels.ERROR)
@@ -119,7 +134,7 @@ function M.get_file_relative_path()
 	end
 
 	local relpath = filepath:sub(#git_root + 2)
-	relpath = relpath:gsub("\\", "/")
+	relpath = M.normalize_path(relpath)
 	return relpath
 end
 
@@ -133,14 +148,24 @@ function M.has_uncommitted_changes(relpath)
 	return output and #output > 0
 end
 
+function M.is_file_tracked(relpath)
+	local git_root = M.get_git_root()
+	if not git_root then
+		return false
+	end
+	local cmd = "ls-files --error-unmatch -- " .. vim.fn.shellescape(relpath)
+	local output = run_git_command(cmd, git_root)
+	return output ~= nil
+end
+
 function M.get_default_branch(remote_name)
-	remote_name = remote_name or "origin"
+	remote_name = remote_name or M.get_default_remote()
 	local git_root = M.get_git_root()
 	if not git_root then
 		return nil
 	end
 
-	local cmd = string.format("symbolic-ref refs/remotes/%s/HEAD", remote_name)
+	local cmd = string.format("symbolic-ref refs/remotes/%s/HEAD", vim.fn.shellescape(remote_name))
 	local output = run_git_command(cmd, git_root)
 	if output and output[1] ~= "" then
 		local default_branch = output[1]:match("refs/remotes/[^/]+/(.+)")
@@ -149,7 +174,7 @@ function M.get_default_branch(remote_name)
 		end
 	end
 
-	cmd = string.format("remote show %s", remote_name)
+	cmd = string.format("remote show %s", vim.fn.shellescape(remote_name))
 	output = run_git_command(cmd, git_root)
 	if output then
 		for _, line in ipairs(output) do
