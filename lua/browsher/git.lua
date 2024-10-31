@@ -12,11 +12,14 @@ local function run_git_command(cmd, git_root)
 	else
 		cmd = "git " .. cmd
 	end
-	local output = vim.fn.systemlist(cmd .. " 2>&1")
+	local output = vim.fn.systemlist(cmd)
 	if vim.v.shell_error ~= 0 then
 		local error_message = table.concat(output, "\n")
 		utils.notify("Git command failed: " .. error_message, vim.log.levels.ERROR)
 		return nil
+	end
+	for i, line in ipairs(output) do
+		output[i] = line:gsub("\r$", "")
 	end
 	return output
 end
@@ -27,7 +30,8 @@ function M.get_git_root()
 		utils.notify("Not inside a Git repository.", vim.log.levels.ERROR)
 		return nil
 	end
-	return output[1]
+	local git_root = output[1]:gsub("\r$", "")
+	return git_root
 end
 
 function M.normalize_path(path)
@@ -128,7 +132,10 @@ function M.get_file_relative_path()
 
 	git_root = git_root:gsub("[/\\]$", "")
 
-	if filepath:sub(1, #git_root) ~= git_root then
+	local normalized_filepath = filepath:gsub("\\", "/")
+	local normalized_git_root = git_root:gsub("\\", "/")
+
+	if normalized_filepath:sub(1, #normalized_git_root) ~= normalized_git_root then
 		utils.notify("File is not inside the Git repository.", vim.log.levels.ERROR)
 		return nil
 	end
