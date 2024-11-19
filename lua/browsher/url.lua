@@ -11,12 +11,9 @@ local function sanitize_remote_url(remote_url)
 end
 
 function M.url_encode(str)
-	if str then
-		str = str:gsub("([^%w_%-%./~])", function(c)
-			return string.format("%%%02X", string.byte(c))
-		end)
-	end
-	return str
+    return str and str:gsub("([^%w_%-%./~])", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end)
 end
 
 function M.build_url(remote_url, branch_or_tag, relpath, line_info)
