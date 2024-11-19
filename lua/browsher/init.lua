@@ -3,8 +3,12 @@ local url_builder = require("browsher.url")
 local config = require("browsher.config")
 local utils = require("browsher.utils")
 
+--- Main module for browsher.nvim.
 local M = {}
 
+--- Get the command to open URLs based on the OS or user configuration.
+---
+---@return table|nil The command as a list, or nil if unsupported OS.
 local function get_open_command()
 	if config.options.open_cmd then
 		if type(config.options.open_cmd) == "string" then
@@ -13,10 +17,10 @@ local function get_open_command()
 			return config.options.open_cmd
 		end
 	end
-	if vim.fn.has("macunix") == 1 then
-		return { "open" }
-	elseif vim.fn.has("unix") == 1 then
+	if vim.fn.has("unix") == 1 then
 		return { "xdg-open" }
+	elseif vim.fn.has("macunix") == 1 then
+		return { "open" }
 	elseif vim.fn.has("win32") == 1 then
 		return { "explorer.exe" }
 	else
@@ -24,6 +28,9 @@ local function get_open_command()
 	end
 end
 
+--- Open a URL using the system's default method or a user-specified command.
+---
+---@param url string The URL to open.
 local function open_url(url)
 	local open_cmd = get_open_command()
 	if not open_cmd then
@@ -40,6 +47,9 @@ local function open_url(url)
 	end
 end
 
+--- Open the current file in the browser.
+---
+---@param opts table Options passed from the user command.
 function M.open_in_browser(opts)
 	local args = {}
 	if opts.args then
@@ -111,12 +121,18 @@ function M.open_in_browser(opts)
 	local has_changes = git.has_uncommitted_changes(relpath)
 	local line_info = nil
 
-	if has_changes then
+	if has_changes and not config.options.allow_line_numbers_with_uncommitted_changes then
 		utils.notify(
 			"Warning: Uncommitted changes detected in this file. Line number removed from URL.",
 			vim.log.levels.WARN
 		)
 	else
+		if has_changes then
+			utils.notify(
+				"Warning: Uncommitted changes detected in this file. Line numbers may not be accurate.",
+				vim.log.levels.WARN
+			)
+		end
 		if opts.range > 0 then
 			local start_line = opts.line1
 			local end_line = opts.line2
@@ -156,6 +172,9 @@ function M.open_in_browser(opts)
 	open_url(url)
 end
 
+--- Setup user configuration.
+---
+---@param user_options table User-specified options.
 function M.setup(user_options)
 	config.setup(user_options)
 end

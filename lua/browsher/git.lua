@@ -6,9 +6,14 @@ if vim.fn.executable("git") ~= 1 then
 	return M
 end
 
+--- Run a Git command and return the output.
+---
+---@param cmd string The git command to run (without 'git' prefix).
+---@param git_root string|nil The path to the git repository root.
+---@return table|nil Output lines as a table, or nil on error.
 local function run_git_command(cmd, git_root)
 	if git_root then
-		cmd = string.format("git -C %s %s", vim.fn.shellescape(git_root), cmd)
+		cmd = string.format("git -C %s %s", vim.fn.fnameescape(git_root), cmd)
 	else
 		cmd = "git " .. cmd
 	end
@@ -24,6 +29,9 @@ local function run_git_command(cmd, git_root)
 	return output
 end
 
+--- Get the root directory of the git repository.
+---
+---@return string|nil The path to the git root, or nil if not inside a git repository.
 function M.get_git_root()
 	local output = run_git_command("rev-parse --show-toplevel")
 	if not output or output[1] == "" then
@@ -34,10 +42,19 @@ function M.get_git_root()
 	return git_root
 end
 
+--- Normalize file paths to use forward slashes.
+---
+---@param path string The file path to normalize.
+---@return string The normalized file path.
 function M.normalize_path(path)
-	return path:gsub("\\", "/")
+	-- Only return the modified string, not the number of substitutions.
+	return (path:gsub("\\", "/"))
 end
 
+--- Get the URL of the specified remote.
+---
+---@param remote_name string|nil The name of the remote (default: default remote).
+---@return string|nil The remote URL, or nil on error.
 function M.get_remote_url(remote_name)
 	remote_name = remote_name or M.get_default_remote()
 	local git_root = M.get_git_root()
@@ -45,7 +62,7 @@ function M.get_remote_url(remote_name)
 		return nil
 	end
 
-	local cmd = string.format("config --get remote.%s.url", vim.fn.shellescape(remote_name))
+	local cmd = string.format("config --get remote.%s.url", remote_name)
 	local output = run_git_command(cmd, git_root)
 	if not output or output[1] == "" then
 		utils.notify("No remote named '" .. remote_name .. "' is set.", vim.log.levels.ERROR)
@@ -54,6 +71,9 @@ function M.get_remote_url(remote_name)
 	return output[1]
 end
 
+--- Get the default remote name (first one in the list).
+---
+---@return string|nil The default remote name, or nil if none found.
 function M.get_default_remote()
 	local git_root = M.get_git_root()
 	if not git_root then
@@ -67,6 +87,10 @@ function M.get_default_remote()
 	return nil
 end
 
+--- Get the current branch name or commit hash.
+---
+---@return string|nil The branch name or commit hash.
+---@return string|nil 'branch' or 'commit' to indicate the type.
 function M.get_current_branch_or_commit()
 	local git_root = M.get_git_root()
 	if not git_root then
@@ -87,6 +111,9 @@ function M.get_current_branch_or_commit()
 	return nil
 end
 
+--- Get the latest tag.
+---
+---@return string|nil The latest tag, or nil if not found.
 function M.get_latest_tag()
 	local git_root = M.get_git_root()
 	if not git_root then
@@ -101,6 +128,9 @@ function M.get_latest_tag()
 	return nil
 end
 
+--- Get the current commit hash.
+---
+---@return string|nil The current commit hash, or nil if not found.
 function M.get_current_commit_hash()
 	local git_root = M.get_git_root()
 	if not git_root then
@@ -115,6 +145,9 @@ function M.get_current_commit_hash()
 	return nil
 end
 
+--- Get the file path relative to the git root.
+---
+---@return string|nil The relative file path, or nil if not inside the repository.
 function M.get_file_relative_path()
 	local git_root = M.get_git_root()
 	if not git_root then
@@ -145,26 +178,38 @@ function M.get_file_relative_path()
 	return relpath
 end
 
+--- Check if the file has uncommitted changes.
+---
+---@param relpath string The relative file path.
+---@return boolean True if there are uncommitted changes, false otherwise.
 function M.has_uncommitted_changes(relpath)
 	local git_root = M.get_git_root()
 	if not git_root then
 		return false
 	end
-	local cmd = "diff --name-only -- " .. vim.fn.shellescape(relpath)
+	local cmd = "diff --name-only -- " .. vim.fn.fnameescape(relpath)
 	local output = run_git_command(cmd, git_root)
-	return output and #output > 0
+	return (output ~= nil) and (#output > 0)
 end
 
+--- Check if the file is tracked by Git.
+---
+---@param relpath string The relative file path.
+---@return boolean True if the file is tracked, false otherwise.
 function M.is_file_tracked(relpath)
 	local git_root = M.get_git_root()
 	if not git_root then
 		return false
 	end
-	local cmd = "ls-files --error-unmatch -- " .. vim.fn.shellescape(relpath)
+	local cmd = "ls-files --error-unmatch -- " .. vim.fn.fnameescape(relpath)
 	local output = run_git_command(cmd, git_root)
 	return output ~= nil
 end
 
+--- Get the default branch of the remote repository.
+---
+---@param remote_name string|nil The name of the remote (default: default remote).
+---@return string|nil The default branch name, or nil if not found.
 function M.get_default_branch(remote_name)
 	remote_name = remote_name or M.get_default_remote()
 	local git_root = M.get_git_root()
@@ -172,7 +217,7 @@ function M.get_default_branch(remote_name)
 		return nil
 	end
 
-	local cmd = string.format("symbolic-ref refs/remotes/%s/HEAD", vim.fn.shellescape(remote_name))
+	local cmd = string.format("symbolic-ref refs/remotes/%s/HEAD", remote_name)
 	local output = run_git_command(cmd, git_root)
 	if output and output[1] ~= "" then
 		local default_branch = output[1]:match("refs/remotes/[^/]+/(.+)")
@@ -181,7 +226,7 @@ function M.get_default_branch(remote_name)
 		end
 	end
 
-	cmd = string.format("remote show %s", vim.fn.shellescape(remote_name))
+	cmd = string.format("remote show %s", remote_name)
 	output = run_git_command(cmd, git_root)
 	if output then
 		for _, line in ipairs(output) do

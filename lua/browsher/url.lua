@@ -1,6 +1,11 @@
 local M = {}
 local utils = require("browsher.utils")
+local config = require("browsher.config")
 
+--- Sanitize the remote URL to a standard HTTPS URL.
+---
+---@param remote_url string The remote URL to sanitize.
+---@return string The sanitized remote URL.
 local function sanitize_remote_url(remote_url)
 	remote_url = remote_url:gsub("%.git$", "")
 	remote_url = remote_url:gsub("^git@(.-):(.*)$", "https://%1/%2")
@@ -10,29 +15,29 @@ local function sanitize_remote_url(remote_url)
 	return remote_url
 end
 
+--- URL-encode a string.
+---
+---@param str string The string to encode.
+---@return string The URL-encoded string.
 function M.url_encode(str)
-    return str and str:gsub("([^%w_%-%./~])", function(c)
-        return string.format("%%%02X", string.byte(c))
-    end)
+	return str and str:gsub("([^%w_%-%./~])", function(c)
+		return string.format("%%%02X", string.byte(c))
+	end)
 end
 
+--- Build the URL to open in the browser.
+---
+---@param remote_url string The remote repository URL.
+---@param branch_or_tag string The branch, tag, or commit hash.
+---@param relpath string The file path relative to the repository root.
+---@param line_info table|nil Table containing line information (line_number or start_line and end_line).
+---@return string|nil The constructed URL, or nil if unsupported provider.
 function M.build_url(remote_url, branch_or_tag, relpath, line_info)
 	remote_url = sanitize_remote_url(remote_url)
 	branch_or_tag = M.url_encode(branch_or_tag)
 	relpath = M.url_encode(relpath)
 
-	local providers = {
-		["github.com"] = {
-			url_template = "%s/blob/%s/%s",
-			single_line_format = "#L%d",
-			multi_line_format = "#L%d-L%d",
-		},
-		["gitlab.com"] = {
-			url_template = "%s/-/blob/%s/%s",
-			single_line_format = "#L%d",
-			multi_line_format = "#L%d-%d",
-		},
-	}
+	local providers = config.options.providers
 
 	for provider, data in pairs(providers) do
 		if remote_url:match(provider) then
