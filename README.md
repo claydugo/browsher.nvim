@@ -100,7 +100,7 @@ vim.api.nvim_set_keymap('v', '<leader>B', ":'<,'>Browsher tag<CR>gv", { noremap 
 
 Use the `:Browsher` command to open the current file in your browser:
 
-```vim
+```
 :Browsher [pin_type] [commit_hash]
 ```
 
@@ -112,42 +112,42 @@ Use the `:Browsher` command to open the current file in your browser:
 
 Open current file at the latest commit:
 
-```vim
+```
 :Browsher
 ```
 
 Open the repository root URL:
 
-```vim
+```
 :Browsher root
 ```
 
 Open current file at the current branch:
 
-```vim
+```
 :Browsher branch
 ```
 
 Open current file at the latest tag:
 
-```vim
+```
 :Browsher tag
 ```
 
 Open current file at a specific commit:
 
-```vim
+```
 :Browsher commit 123abc
 ```
 
 Open a visual selection of lines:
-```vim
+```
 :'<,'>Browsher commit
 ```
 
 Select lines in visual mode and run:
 
-```vim
+```
 :Browsher
 ```
 
