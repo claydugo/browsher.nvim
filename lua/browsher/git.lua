@@ -1,4 +1,5 @@
 local M = {}
+local config = require("browsher.config")
 local utils = require("browsher.utils")
 
 if vim.fn.executable("git") ~= 1 then
@@ -137,11 +138,20 @@ function M.get_current_commit_hash()
         return nil
     end
 
-    local output = run_git_command("rev-parse HEAD", git_root)
+    local abbrev_arg = ""
+    local commit_length = config.options.commit_length
+    if commit_length then
+        abbrev_arg = string.format("--short=%d", commit_length)
+    else
+        abbrev_arg = ""
+    end
+
+    local cmd = string.format("rev-parse %s HEAD", abbrev_arg)
+    local output = run_git_command(cmd, git_root)
     if output and output[1] ~= "" then
         return output[1]
     end
-    utils.notify("Could not determine the latest commit hash.", vim.log.levels.ERROR)
+    utils.notify("Could not determine the current commit hash.", vim.log.levels.ERROR)
     return nil
 end
 
