@@ -1,12 +1,15 @@
 # 📖 browsher.nvim
 
+![openinbrowse](https://github.com/user-attachments/assets/06ea7885-877d-44be-83f8-43fbd0497208)
+
+
 `browsher.nvim` is a highly customizable Neovim plugin that opens the current file at the specified lines or range in your default browser, pinned to a specific branch, tag, commit, or the repository root in your remote Git repository.
 
 # ✨ Features
 
 - **Open files in the browser**: Quickly open the current file in your remote Git repository's web interface.
 - **Line and Range Support**: Supports opening specific lines or ranges, including multiline selections from visual mode.
-- **Customizable providers**: Support for GitHub, GitLab, and custom providers.
+- **Customizable providers**: Support for GitHub, GitLab, and the ability to specify custom git web interfaces.
 - **Custom open commands**: Specify custom commands to open URLs (e.g., use a specific browser).
 
 # 📦 Installation
@@ -88,11 +91,11 @@ require("browsher").setup({
 Add the following key mappings to your Neovim configuration to quickly open files in the browser:
 
 ```lua
--- Open from the latest commit
+-- Open from the latest commit, the recommended default operation
 vim.api.nvim_set_keymap('n', '<leader>b', '<cmd>Browsher commit<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('v', '<leader>b', ":'<,'>Browsher commit<CR>gv", { noremap = true, silent = true })
 
--- Open from the latest tag
+-- Open from the latest tag, for more human readable urls (with risk of outdated line numbers)
 vim.api.nvim_set_keymap('n', '<leader>B', '<cmd>Browsher tag<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('v', '<leader>B', ":'<,'>Browsher tag<CR>gv", { noremap = true, silent = true })
 ```

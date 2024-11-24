@@ -138,7 +138,7 @@ function M.get_current_commit_hash()
         return nil
     end
 
-    local abbrev_arg = ""
+    local abbrev_arg
     local commit_length = config.options.commit_length
     if commit_length then
         abbrev_arg = string.format("--short=%d", commit_length)
