@@ -1,4 +1,4 @@
-*browsher.txt*          For NVIM v0.8.0          Last change: 2024 November 24
+*browsher.txt*Create commit pinned links to git(hub | lab) hosted files/lines directly from Neovim
 
 ==============================================================================
 Table of Contents                                 *browsher-table-of-contents*
