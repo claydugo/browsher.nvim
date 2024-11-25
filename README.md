@@ -1,7 +1,6 @@
 # 📖 browsher.nvim
 
-![openinbrowse](https://github.com/user-attachments/assets/06ea7885-877d-44be-83f8-43fbd0497208)
-
+![open_in_browser](https://github.com/user-attachments/assets/06ea7885-877d-44be-83f8-43fbd0497208)
 
 `browsher.nvim` is a highly customizable Neovim plugin that opens the current file at the specified lines or range in your default browser, pinned to a specific branch, tag, commit, or the repository root in your remote Git repository.
 
@@ -25,12 +24,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim)
   end
 }
 ```
-
-Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
-
-```lua
-use { 'claydugo/browsher.nvim' }
-```
+> [!IMPORTANT]
+> Please submit a Pull Request and add to this section if you have worked through installation instructions for other plugin managers!
 
 # ⚙️ Configuration
 
