@@ -17,15 +17,8 @@ local function get_open_command()
             return config.options.open_cmd
         end
     end
-    if vim.fn.has("unix") == 1 then
-        return { "xdg-open" }
-    elseif vim.fn.has("macunix") == 1 then
-        return { "open" }
-    elseif vim.fn.has("win32") == 1 then
-        return { "explorer.exe" }
-    else
-        return nil
-    end
+
+    return nil
 end
 
 --- Open a URL using the system's default method or a user-specified command.
@@ -34,7 +27,8 @@ end
 local function open_url(url)
     local open_cmd = get_open_command()
     if not open_cmd then
-        utils.notify("Unsupported OS", vim.log.levels.ERROR)
+        vim.fn.setreg("+", url)
+        utils.notify("URL copied to '+' register", vim.log.levels.INFO)
         return
     end
 

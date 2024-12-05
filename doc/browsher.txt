@@ -73,6 +73,7 @@ DEFAULT OPTIONS
         --- Allow line numbers with uncommitted changes.
         allow_line_numbers_with_uncommitted_changes = false,
         --- Command to open URLs (e.g., 'firefox').
+	--- If set to `nil`, will copy the URL to the '+' register instead.
         open_cmd = nil,
         --- Custom providers for building URLs.
         ---
