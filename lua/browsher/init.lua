@@ -17,6 +17,7 @@ local function get_open_command()
             return config.options.open_cmd
         end
     end
+
     if vim.fn.has("unix") == 1 then
         return { "xdg-open" }
     elseif vim.fn.has("macunix") == 1 then
@@ -35,6 +36,10 @@ local function open_url(url)
     local open_cmd = get_open_command()
     if not open_cmd then
         utils.notify("Unsupported OS", vim.log.levels.ERROR)
+        return
+    elseif string.len(open_cmd[1]) == 1 then
+        vim.fn.setreg(open_cmd[1], url)
+        utils.notify("URL copied to '" .. open_cmd[1] .. "' register", vim.log.levels.INFO)
         return
     end
 

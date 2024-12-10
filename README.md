@@ -45,6 +45,10 @@ require("browsher").setup({
     --- Allow line numbers with uncommitted changes.
     allow_line_numbers_with_uncommitted_changes = false,
     --- Command to open URLs (e.g., 'firefox').
+    --- If this is a single character, it will be interpreted as a vim register
+    --- instead. For example, to copy the url to your OS clipboard instead of
+    --- opening it inside an application, set `open_cmd` to `+` for unix systems,
+    --- or `*` if you're on Windows.
     open_cmd = nil,
     --- Custom providers for building URLs.
     ---
