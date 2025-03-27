@@ -8,8 +8,10 @@
 
 - **Open files in the browser**: Quickly open the current file in your remote Git repository's web interface.
 - **Line and Range Support**: Supports opening specific lines or ranges, including multiline selections from visual mode.
-- **Customizable providers**: Support for GitHub, GitLab, and the ability to specify custom git web interfaces.
+- **Customizable providers**: Support for GitHub, GitLab, BitBucket, Azure DevOps, Gitea, Forgejo, and the ability to specify custom git web interfaces.
 - **Custom open commands**: Specify custom commands to open URLs (e.g., use a specific browser).
+- **Performance optimizations**: Includes caching for Git operations to improve performance.
+- **Asynchronous mode**: Support for non-blocking asynchronous operations.
 
 # 📦 Installation
 Using [lazy.nvim](https://github.com/folke/lazy.nvim)
@@ -50,6 +52,10 @@ require("browsher").setup({
     --- opening it inside an application, set `open_cmd` to `+` for unix systems,
     --- or `*` if you're on Windows.
     open_cmd = nil,
+    --- Cache time-to-live in seconds for git operations
+    cache_ttl = 10,
+    --- Enable asynchronous operations
+    async = false,
     --- Custom providers for building URLs.
     ---
     --- Each provider is a table with the following keys:
@@ -80,6 +86,26 @@ require("browsher").setup({
             url_template = "%s/-/blob/%s/%s",
             single_line_format = "#L%d",
             multi_line_format = "#L%d-%d",
+        },
+        ["bitbucket.org"] = {
+            url_template = "%s/src/%s/%s",
+            single_line_format = "#lines-%d",
+            multi_line_format = "#lines-%d:%d",
+        },
+        ["dev.azure.com"] = {
+            url_template = "%s?path=/%s&version=GB%s",
+            single_line_format = "&line=%d&lineEnd=%d",
+            multi_line_format = "&line=%d&lineEnd=%d",
+        },
+        ["gitea.io"] = {
+            url_template = "%s/src/%s/%s",
+            single_line_format = "#L%d",
+            multi_line_format = "#L%d-L%d",
+        },
+        ["forgejo.org"] = {
+            url_template = "%s/src/%s/%s",
+            single_line_format = "#L%d",
+            multi_line_format = "#L%d-L%d",
         },
     },
 })
@@ -156,4 +182,6 @@ Select lines in visual mode and run:
 
 # ⚠️ Notes
 
-* **Uncommitted Changes**: If the current file has uncommitted changes, line numbers may not correspond to what's on the remote repository. By default, line numbers are omitted when there are uncommitted changes unless `allow_line_numbers_with_uncommitted_changes` is set to true.
+* **Uncommitted Changes**: If the current file has uncommitted changes, the plugin will check if the specific lines you're trying to open have uncommitted changes. Only if the selected lines themselves have changes will the line numbers be omitted (unless `allow_line_numbers_with_uncommitted_changes` is set to true). This allows you to include line numbers for parts of files that are unchanged, even if other parts of the file have uncommitted changes.
+
+* **Line Number Adjustment**: When your file has uncommitted changes, the plugin automatically adjusts line numbers to account for additions or deletions. This ensures that the URL will point to the correct lines in the committed version on the remote repository, even if your local file has different line numbering due to your uncommitted changes.
