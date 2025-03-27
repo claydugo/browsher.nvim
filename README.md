@@ -8,7 +8,7 @@
 
 - **Open files in the browser**: Quickly open the current file in your remote Git repository's web interface.
 - **Line and Range Support**: Supports opening specific lines or ranges, including multiline selections from visual mode.
-- **Customizable providers**: Support for GitHub, GitLab, BitBucket, Azure DevOps, Gitea, Forgejo, and the ability to specify custom git web interfaces.
+- **Customizable providers**: Support for GitHub, GitLab, and the ability to specify custom git web interfaces.
 - **Custom open commands**: Specify custom commands to open URLs (e.g., use a specific browser).
 - **Performance optimizations**: Includes caching for Git operations to improve performance.
 - **Asynchronous mode**: Support for non-blocking asynchronous operations.
@@ -86,26 +86,6 @@ require("browsher").setup({
             url_template = "%s/-/blob/%s/%s",
             single_line_format = "#L%d",
             multi_line_format = "#L%d-%d",
-        },
-        ["bitbucket.org"] = {
-            url_template = "%s/src/%s/%s",
-            single_line_format = "#lines-%d",
-            multi_line_format = "#lines-%d:%d",
-        },
-        ["dev.azure.com"] = {
-            url_template = "%s?path=/%s&version=GB%s",
-            single_line_format = "&line=%d&lineEnd=%d",
-            multi_line_format = "&line=%d&lineEnd=%d",
-        },
-        ["gitea.io"] = {
-            url_template = "%s/src/%s/%s",
-            single_line_format = "#L%d",
-            multi_line_format = "#L%d-L%d",
-        },
-        ["forgejo.org"] = {
-            url_template = "%s/src/%s/%s",
-            single_line_format = "#L%d",
-            multi_line_format = "#L%d-L%d",
         },
     },
 })

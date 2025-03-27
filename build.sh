@@ -35,12 +35,58 @@ if ! command -v fennel &> /dev/null; then
     exit 1
 fi
 
+# Check for required tools
+for tool in fennel stylua luacheck; do
+    if ! command -v "$tool" &> /dev/null; then
+        echo "Error: $tool is not installed"
+        echo "Please install it first:"
+        case "$tool" in
+            fennel)
+                echo "  luarocks install fennel"
+                ;;
+            stylua)
+                echo "  cargo install stylua"
+                ;;
+            luacheck)
+                echo "  luarocks install luacheck"
+                ;;
+        esac
+        exit 1
+    fi
+done
+
+# Function to run stylua
+run_stylua() {
+    echo "Running stylua..."
+    if ! stylua .; then
+        echo "Error: stylua found formatting issues"
+        exit 1
+    fi
+    echo "Stylua check passed"
+}
+
+# Function to run luacheck
+run_luacheck() {
+    echo "Running luacheck..."
+    if ! luacheck .; then
+        echo "Error: luacheck found issues"
+        exit 1
+    fi
+    echo "Luacheck check passed"
+}
+
 # Create output directories
 mkdir -p "${PROJECT_ROOT}/lua/browsher"
 mkdir -p "${PROJECT_ROOT}/lua/browsher/platforms"
 mkdir -p "${PROJECT_ROOT}/lua/browsher/core"
 mkdir -p "${PROJECT_ROOT}/vscode-browsher/lua/browsher/core"
 mkdir -p "${PROJECT_ROOT}/vscode-browsher/lua/browsher/platforms"
+
+echo "Starting build process..."
+
+# Run code quality checks
+run_stylua
+run_luacheck
 
 echo "Building Neovim plugin..."
 
