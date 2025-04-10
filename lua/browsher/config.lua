@@ -46,6 +46,11 @@ M.options = {
             single_line_format = "#L%d",
             multi_line_format = "#L%d-%d",
         },
+        ["sr.ht"] = {
+            url_template = "%s/tree/%s/item/%s",
+            single_line_format = "#L%d",
+            multi_line_format = "#L%d",
+        },
     },
 }
 
