@@ -8,7 +8,7 @@
 
 - **Open files in the browser**: Quickly open the current file in your remote Git repository's web interface.
 - **Line and Range Support**: Supports opening specific lines or ranges, including multiline selections from visual mode.
-- **Customizable providers**: Support for GitHub, GitLab, and the ability to specify custom git web interfaces.
+- **Customizable providers**: Support for GitHub, GitLab, Sourcehut, and the ability to specify custom git web interfaces.
 - **Custom open commands**: Specify custom commands to open URLs (e.g., use a specific browser).
 
 # 📦 Installation
@@ -80,6 +80,11 @@ require("browsher").setup({
             url_template = "%s/-/blob/%s/%s",
             single_line_format = "#L%d",
             multi_line_format = "#L%d-%d",
+        },
+        ["sr.ht"] = {
+            url_template = "%s/tree/%s/item/%s",
+            single_line_format = "#L%d",
+            multi_line_format = "#L%d",
         },
     },
 })
