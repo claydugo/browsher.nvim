@@ -18,11 +18,13 @@ local function get_open_command()
         end
     end
 
-    if vim.fn.has("macunix") == 1 then
-        return { "open" }
-    elseif vim.fn.has("unix") == 1 then
+    local os_name = vim.loop.os_uname().sysname
+
+    if os_name == "Linux" then
         return { "xdg-open" }
-    elseif vim.fn.has("win32") == 1 then
+    elseif os_name == "Darwin" then
+        return { "open" }
+    elseif os_name == "Windows_NT" then
         return { "explorer.exe" }
     else
         return nil
