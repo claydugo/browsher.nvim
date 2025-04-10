@@ -18,11 +18,13 @@ local function get_open_command()
         end
     end
 
-    if vim.fn.has("unix") == 1 then
+    local os_name = vim.loop.os_uname().sysname
+
+    if os_name == "Linux" then
         return { "xdg-open" }
-    elseif vim.fn.has("macunix") == 1 then
+    elseif os_name == "Darwin" then
         return { "open" }
-    elseif vim.fn.has("win32") == 1 then
+    elseif os_name == "Windows_NT" then
         return { "explorer.exe" }
     else
         return nil
@@ -35,7 +37,14 @@ end
 local function open_url(url)
     local open_cmd = get_open_command()
     if not open_cmd then
-        utils.notify("Unsupported OS", vim.log.levels.ERROR)
+        local error_msg = [[
+Could not determine which command used by your operating system to
+open a browser from the command-line.
+
+You must explicitly set the "open_cmd" option in your configuration
+for Browsher to function.
+        ]]
+        utils.notify(error_msg, vim.log.levels.ERROR)
         return
     elseif string.len(open_cmd[1]) == 1 then
         vim.fn.setreg(open_cmd[1], url)
