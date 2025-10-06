@@ -14,6 +14,15 @@ M.options = {
     open_cmd = nil,
     --- Allow line numbers with uncommitted changes.
     allow_line_numbers_with_uncommitted_changes = false,
+    --- Enable right-click menu integration using nvzone/menu
+    enable_menu = false,
+    --- Custom keybindings for the menu (when enable_menu is true)
+    menu_keybindings = {
+        --- Keybinding for opening menu with keyboard
+        keyboard = "<leader>bm",
+        --- Enable right-click mouse support
+        mouse = true,
+    },
     --- Custom providers for building URLs.
     ---
     --- Each provider is a table with the following keys:

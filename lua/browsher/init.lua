@@ -197,6 +197,48 @@ end
 ---@param user_options table User-specified options.
 function M.setup(user_options)
     config.setup(user_options)
+
+    -- Setup menu keybindings if enabled and menu plugin is available
+    if config.options.enable_menu then
+        local has_menu = pcall(require, "menu")
+        if has_menu then
+            M.setup_menu()
+        else
+            utils.notify(
+                "Menu feature enabled but nvzone/menu not found. "
+                    .. "Install nvzone/volt and nvzone/menu to use the menu feature.",
+                vim.log.levels.WARN
+            )
+        end
+    end
+end
+
+--- Setup menu keybindings
+function M.setup_menu()
+    local menu_config = config.options.menu_keybindings
+
+    -- Setup keyboard binding (works in both normal and visual mode)
+    if menu_config.keyboard then
+        vim.keymap.set({ "n", "v" }, menu_config.keyboard, function()
+            require("browsher.menu").open()
+        end, { noremap = true, silent = true, desc = "Open Browsher menu" })
+    end
+
+    -- Setup mouse right-click binding (only in visual mode to preserve default right-click in normal mode)
+    if menu_config.mouse then
+        vim.keymap.set("v", "<RightMouse>", function()
+            -- Position cursor at mouse click
+            vim.cmd('normal! "\\<RightMouse>"')
+
+            -- Delete old menus if they exist
+            pcall(function()
+                require("menu.utils").delete_old_menus()
+            end)
+
+            -- Open browsher menu
+            require("browsher.menu").open({ mouse = true })
+        end, { noremap = true, silent = true, desc = "Open Browsher menu at mouse" })
+    end
 end
 
 return M
