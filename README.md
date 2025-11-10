@@ -162,3 +162,7 @@ Select lines in visual mode and run:
 # ⚠️ Notes
 
 * **Uncommitted Changes**: If the current file has uncommitted changes, line numbers may not correspond to what's on the remote repository. By default, line numbers are omitted when there are uncommitted changes unless `allow_line_numbers_with_uncommitted_changes` is set to true.
+
+# 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
