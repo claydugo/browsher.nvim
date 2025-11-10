@@ -11,7 +11,8 @@ Table of Contents                                 *browsher-table-of-contents*
 5. Usage                                                      |browsher-usage|
 6. Examples                                                |browsher-examples|
 7. Notes                                                      |browsher-notes|
-8. Links                                                      |browsher-links|
+8. License                                                  |browsher-license|
+9. Links                                                      |browsher-links|
 
 ==============================================================================
 1. browsher.nvim                                      *browsher-browsher.nvim*
@@ -25,10 +26,10 @@ repository.
 ==============================================================================
 2. Features                                                *browsher-features*
 
-- **Open files in the browser**Quickly open the current file in your remote Git repository’s web interface.
-- **Line and Range Support**Supports opening specific lines or ranges, including multiline selections from visual mode.
-- **Customizable providers**Support for GitHub, GitLab, Sourcehut, and the ability to specify custom git web interfaces.
-- **Custom open commands**Specify custom commands to open URLs (e.g., use a specific browser).
+- **Open files in the browser**: Quickly open the current file in your remote Git repository’s web interface.
+- **Line and Range Support**: Supports opening specific lines or ranges, including multiline selections from visual mode.
+- **Customizable providers**: Support for GitHub, GitLab, Sourcehut, and the ability to specify custom git web interfaces.
+- **Custom open commands**: Specify custom commands to open URLs (e.g., use a specific browser).
 
 
 ==============================================================================
@@ -198,10 +199,17 @@ Select lines in visual mode and run:
 ==============================================================================
 7. Notes                                                      *browsher-notes*
 
-- **Uncommitted Changes**If the current file has uncommitted changes, line numbers may not correspond to what’s on the remote repository. By default, line numbers are omitted when there are uncommitted changes unless `allow_line_numbers_with_uncommitted_changes` is set to true.
+- **Uncommitted Changes**: If the current file has uncommitted changes, line numbers may not correspond to what’s on the remote repository. By default, line numbers are omitted when there are uncommitted changes unless `allow_line_numbers_with_uncommitted_changes` is set to true.
+
 
 ==============================================================================
-8. Links                                                      *browsher-links*
+8. License                                                  *browsher-license*
+
+This project is licensed under the MIT License - see the LICENSE <LICENSE> file
+for details.
+
+==============================================================================
+9. Links                                                      *browsher-links*
 
 1. *open_in_browser*: https://github.com/user-attachments/assets/06ea7885-877d-44be-83f8-43fbd0497208
 
