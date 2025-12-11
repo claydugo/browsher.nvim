@@ -98,6 +98,10 @@ function M.get_current_branch_or_commit()
         return nil
     end
 
+    if config.options.default_branch then
+        return config.options.default_branch, "branch"
+    end
+
     local output = run_git_command("symbolic-ref --short HEAD", git_root)
     if output and output[1] ~= "" then
         return output[1], "branch"
