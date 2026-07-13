@@ -7,11 +7,15 @@ if vim.fn.executable("git") ~= 1 then
     return M
 end
 
---- Run a Git command and return the output.
+---@class GitResult
+---@field output string[]|nil Output lines, or nil on error.
+---@field exit_code number Shell exit code.
+
+--- Run a Git command and return the result.
 ---
 ---@param cmd string The git command to run (without 'git' prefix).
 ---@param git_root string|nil The path to the git repository root.
----@return table|nil Output lines as a table, or nil on error.
+---@return GitResult
 local function run_git_command(cmd, git_root)
     if git_root then
         cmd = string.format("git -C %s %s", vim.fn.fnameescape(git_root), cmd)
@@ -19,28 +23,41 @@ local function run_git_command(cmd, git_root)
         cmd = "git " .. cmd
     end
     local output = vim.fn.systemlist(cmd)
-    if vim.v.shell_error ~= 0 then
-        local error_message = table.concat(output, "\n")
-        utils.notify("Git command failed: " .. error_message, vim.log.levels.ERROR)
-        return nil
+    local exit_code = vim.v.shell_error
+    if exit_code ~= 0 then
+        return { output = nil, exit_code = exit_code }
     end
     for i, line in ipairs(output) do
         output[i] = line:gsub("\r$", "")
     end
-    return output
+    return { output = output, exit_code = 0 }
 end
+
+--- Internal cache for git root, keyed by cwd to handle directory changes.
+---@type table<string, string>
+local git_root_cache = {}
 
 --- Get the root directory of the git repository.
 ---
+---@param use_cache boolean|nil Whether to use cached value (default: false for public API safety).
 ---@return string|nil The path to the git root, or nil if not inside a git repository.
-function M.get_git_root()
-    local output = run_git_command("rev-parse --show-toplevel")
-    if not output or output[1] == "" then
-        utils.notify("Not inside a Git repository.", vim.log.levels.ERROR)
+function M.get_git_root(use_cache)
+    local cwd = vim.fn.getcwd()
+    if use_cache and git_root_cache[cwd] then
+        return git_root_cache[cwd]
+    end
+    local result = run_git_command("rev-parse --show-toplevel")
+    if not result.output or result.output[1] == "" then
         return nil
     end
-    local git_root = output[1]:gsub("\r$", "")
+    local git_root = result.output[1]:gsub("\r$", "")
+    git_root_cache[cwd] = git_root
     return git_root
+end
+
+--- Clear the cached git roots.
+function M.clear_cache()
+    git_root_cache = {}
 end
 
 --- Normalize file paths to use forward slashes.
@@ -54,90 +71,125 @@ end
 
 --- Get the URL of the specified remote.
 ---
----@param remote_name string|nil The name of the remote (default: default remote).
+---@param remote_name string|nil The name of the remote (defaults to first remote).
+---@param git_root string|nil The git root (fetched if nil).
 ---@return string|nil The remote URL, or nil on error.
-function M.get_remote_url(remote_name)
-    remote_name = remote_name or M.get_default_remote()
-    local git_root = M.get_git_root()
+function M.get_remote_url(remote_name, git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
+        return nil
+    end
+
+    remote_name = remote_name or M.get_default_remote(git_root)
+    if not remote_name then
         return nil
     end
 
     local cmd = string.format("config --get remote.%s.url", remote_name)
-    local output = run_git_command(cmd, git_root)
-    if not output or output[1] == "" then
-        utils.notify("No remote named '" .. remote_name .. "' is set.", vim.log.levels.ERROR)
+    local result = run_git_command(cmd, git_root)
+    if not result.output or result.output[1] == "" then
         return nil
     end
-    return output[1]
+    return result.output[1]
 end
 
 --- Get the default remote name (first one in the list).
 ---
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return string|nil The default remote name, or nil if none found.
-function M.get_default_remote()
-    local git_root = M.get_git_root()
+function M.get_default_remote(git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return nil
     end
-    local output = run_git_command("remote", git_root)
-    if output and #output > 0 then
-        return output[1]
+    local result = run_git_command("remote", git_root)
+    if result.output and #result.output > 0 then
+        return result.output[1]
     end
-    utils.notify("No remotes found in the repository.", vim.log.levels.ERROR)
     return nil
 end
 
---- Get the current branch name or commit hash.
+--- Check if the repository is in detached HEAD state.
 ---
----@return string|nil The branch name or commit hash.
----@return string|nil 'branch' or 'commit' to indicate the type.
-function M.get_current_branch_or_commit()
-    local git_root = M.get_git_root()
+---@param git_root string|nil The git root (uses cached if nil).
+---@return boolean True if in detached HEAD state.
+function M.is_detached_head(git_root)
+    git_root = git_root or M.get_git_root()
+    if not git_root then
+        return false
+    end
+    local result = run_git_command("symbolic-ref -q HEAD", git_root)
+    return result.exit_code ~= 0
+end
+
+--- Get the current branch name (only if on a branch, not detached HEAD).
+---
+---@param git_root string|nil The git root (uses cached if nil).
+---@return string|nil The branch name, or nil if detached or error.
+function M.get_current_branch(git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return nil
     end
 
     if config.options.default_branch then
-        return config.options.default_branch, "branch"
+        return config.options.default_branch
     end
 
-    local output = run_git_command("symbolic-ref --short HEAD", git_root)
-    if output and output[1] ~= "" then
-        return output[1], "branch"
+    local result = run_git_command("symbolic-ref --short HEAD", git_root)
+    if result.output and result.output[1] ~= "" then
+        return result.output[1]
+    end
+    return nil
+end
+
+--- Get the current branch name or commit hash.
+---
+---@param git_root string|nil The git root (uses cached if nil).
+---@return string|nil The branch name or commit hash.
+---@return string|nil 'branch' or 'commit' to indicate the type.
+function M.get_current_branch_or_commit(git_root)
+    git_root = git_root or M.get_git_root()
+    if not git_root then
+        return nil
     end
 
-    output = run_git_command("rev-parse --short HEAD", git_root)
-    if output and output[1] ~= "" then
-        return output[1], "commit"
+    local branch = M.get_current_branch(git_root)
+    if branch then
+        return branch, "branch"
     end
 
-    utils.notify("Could not determine the current branch or commit hash.", vim.log.levels.ERROR)
+    local result = run_git_command("rev-parse --short HEAD", git_root)
+    if result.output and result.output[1] ~= "" then
+        return result.output[1], "commit"
+    end
+
     return nil
 end
 
 --- Get the latest tag.
 ---
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return string|nil The latest tag, or nil if not found.
-function M.get_latest_tag()
-    local git_root = M.get_git_root()
+function M.get_latest_tag(git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return nil
     end
 
-    local output = run_git_command("describe --tags --abbrev=0", git_root)
-    if output and output[1] ~= "" then
-        return output[1]
+    local result = run_git_command("describe --tags --abbrev=0", git_root)
+    if result.output and result.output[1] ~= "" then
+        return result.output[1]
     end
-    utils.notify("Could not determine the latest tag.", vim.log.levels.ERROR)
     return nil
 end
 
 --- Get the current commit hash.
 ---
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return string|nil The current commit hash, or nil if not found.
-function M.get_current_commit_hash()
-    local git_root = M.get_git_root()
+function M.get_current_commit_hash(git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return nil
     end
@@ -151,99 +203,101 @@ function M.get_current_commit_hash()
     end
 
     local cmd = string.format("rev-parse %s HEAD", abbrev_arg)
-    local output = run_git_command(cmd, git_root)
-    if output and output[1] ~= "" then
-        return output[1]
+    local result = run_git_command(cmd, git_root)
+    if result.output and result.output[1] ~= "" then
+        return result.output[1]
     end
-    utils.notify("Could not determine the current commit hash.", vim.log.levels.ERROR)
     return nil
 end
 
 --- Get the file path relative to the git root.
 ---
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return string|nil The relative file path, or nil if not inside the repository.
-function M.get_file_relative_path()
-    local git_root = M.get_git_root()
+function M.get_file_relative_path(git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return nil
     end
 
     local filepath = vim.api.nvim_buf_get_name(0)
     if filepath == "" then
-        utils.notify("No file to open.", vim.log.levels.ERROR)
         return nil
     end
 
     filepath = vim.fn.fnamemodify(filepath, ":p")
-    git_root = vim.fn.fnamemodify(git_root, ":p")
-
-    git_root = git_root:gsub("[/\\]$", "")
+    local expanded_root = vim.fn.fnamemodify(git_root, ":p"):gsub("[/\\]$", "")
 
     local normalized_filepath = filepath:gsub("\\", "/")
-    local normalized_git_root = git_root:gsub("\\", "/")
+    local normalized_git_root = expanded_root:gsub("\\", "/")
 
     if normalized_filepath:sub(1, #normalized_git_root) ~= normalized_git_root then
-        utils.notify("File is not inside the Git repository.", vim.log.levels.ERROR)
         return nil
     end
 
-    local relative_path = filepath:sub(#git_root + 2)
-    relative_path = M.normalize_path(relative_path)
-    return relative_path
+    local relative_path = filepath:sub(#expanded_root + 2)
+    return M.normalize_path(relative_path)
 end
 
 --- Check if the file has uncommitted changes.
 ---
 ---@param relative_path string The relative file path.
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return boolean True if there are uncommitted changes, false otherwise.
-function M.has_uncommitted_changes(relative_path)
-    local git_root = M.get_git_root()
+function M.has_uncommitted_changes(relative_path, git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return false
     end
     local cmd = "diff --name-only -- " .. vim.fn.fnameescape(relative_path)
-    local output = run_git_command(cmd, git_root)
-    return (output ~= nil) and (#output > 0)
+    local result = run_git_command(cmd, git_root)
+    return result.output ~= nil and #result.output > 0
 end
 
 --- Check if the file is tracked by Git.
 ---
 ---@param relative_path string The relative file path.
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return boolean True if the file is tracked, false otherwise.
-function M.is_file_tracked(relative_path)
-    local git_root = M.get_git_root()
+function M.is_file_tracked(relative_path, git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
         return false
     end
     local cmd = "ls-files --error-unmatch -- " .. vim.fn.fnameescape(relative_path)
-    local output = run_git_command(cmd, git_root)
-    return output ~= nil
+    local result = run_git_command(cmd, git_root)
+    return result.output ~= nil
 end
 
 --- Get the default branch of the remote repository.
 ---
----@param remote_name string|nil The name of the remote (default: default remote).
+---@param remote_name string|nil The name of the remote.
+---@param git_root string|nil The git root (uses cached if nil).
 ---@return string|nil The default branch name, or nil if not found.
-function M.get_default_branch(remote_name)
-    remote_name = remote_name or M.get_default_remote()
-    local git_root = M.get_git_root()
+function M.get_remote_default_branch(remote_name, git_root)
+    git_root = git_root or M.get_git_root()
     if not git_root then
+        return nil
+    end
+    remote_name = remote_name or M.get_default_remote(git_root)
+    if not remote_name then
         return nil
     end
 
     local cmd = string.format("symbolic-ref refs/remotes/%s/HEAD", remote_name)
-    local output = run_git_command(cmd, git_root)
-    if output and output[1] ~= "" then
-        local default_branch = output[1]:match("refs/remotes/[^/]+/(.+)")
+    local result = run_git_command(cmd, git_root)
+    if result.output and result.output[1] ~= "" then
+        local default_branch = result.output[1]:match("refs/remotes/[^/]+/(.+)")
         if default_branch then
             return default_branch
         end
     end
 
+    -- Fallback: query the remote (slower, requires network)
     cmd = string.format("remote show %s", remote_name)
-    output = run_git_command(cmd, git_root)
-    if output then
-        for _, line in ipairs(output) do
+    result = run_git_command(cmd, git_root)
+    if result.output then
+        for _, line in ipairs(result.output) do
             local branch = line:match("HEAD branch: (.+)")
             if branch then
                 return branch
@@ -251,8 +305,10 @@ function M.get_default_branch(remote_name)
         end
     end
 
-    utils.notify("Could not determine the default branch.", vim.log.levels.ERROR)
     return nil
 end
+
+-- Backwards compatibility alias
+M.get_default_branch = M.get_remote_default_branch
 
 return M

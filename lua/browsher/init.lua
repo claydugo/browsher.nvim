@@ -57,19 +57,58 @@ for Browsher to function.
     vim.fn.jobstart(open_cmd, { detach = true })
 end
 
+--- Parse command arguments into pin type and optional commit.
+---
+---@param args_str string|nil The raw arguments string.
+---@return string pin_type The pin type.
+---@return string|nil specific_commit Optional specific commit hash.
+local function parse_args(args_str)
+    local args = {}
+    if args_str then
+        for word in string.gmatch(args_str, "%S+") do
+            table.insert(args, word)
+        end
+    end
+    local pin_type = args[1] or config.options.default_pin or "commit"
+    return pin_type, args[2]
+end
+
+--- Get line information from cursor or visual selection.
+---
+---@param opts table Command options with range info.
+---@return table|nil line_info Table with line_number or start_line/end_line.
+local function get_line_info(opts)
+    local start_line, end_line
+
+    if opts.range > 0 then
+        start_line = opts.line1
+        end_line = opts.line2
+    else
+        local mode = vim.fn.mode()
+        if mode == "v" or mode == "V" or mode == "\22" then
+            start_line = vim.fn.line("v")
+            end_line = vim.fn.line(".")
+        else
+            start_line = vim.api.nvim_win_get_cursor(0)[1]
+            end_line = start_line
+        end
+    end
+
+    if start_line > end_line then
+        start_line, end_line = end_line, start_line
+    end
+
+    if start_line == end_line then
+        return { line_number = start_line }
+    end
+    return { start_line = start_line, end_line = end_line }
+end
+
 --- Open the current file in the browser.
 ---
 ---@param opts table Options passed from the user command.
 function M.open_in_browser(opts)
-    local args = {}
-    if opts.args then
-        for word in string.gmatch(opts.args, "%S+") do
-            table.insert(args, word)
-        end
-    end
-
-    local pin_type = args[1] or config.options.default_pin or "commit"
-    local specific_commit = args[2]
+    local pin_type, specific_commit = parse_args(opts.args)
 
     local valid_pin_types = { commit = true, branch = true, tag = true, root = true }
     if not valid_pin_types[pin_type] then
@@ -77,53 +116,59 @@ function M.open_in_browser(opts)
         return
     end
 
-    local remote_name = config.options.default_remote or git.get_default_remote()
-    if not remote_name then
-        utils.notify("No remote found.", vim.log.levels.ERROR)
-        return
-    end
-
-    local remote_url = git.get_remote_url(remote_name)
-    if not remote_url then
-        utils.notify("No remote URL found.", vim.log.levels.ERROR)
-        return
-    end
-
-    if pin_type == "root" then
-        local sanitized_url = url_builder.sanitize_remote_url(remote_url)
-        open_url(sanitized_url)
-        return
-    end
-
+    -- Get git root (will be cached by cwd for subsequent calls)
     local git_root = git.get_git_root()
     if not git_root then
         utils.notify("Not in a Git repository.", vim.log.levels.ERROR)
         return
     end
 
-    local relative_path = git.get_file_relative_path()
-    if not relative_path then
-        utils.notify("Not in a Git repository.", vim.log.levels.ERROR)
+    local remote_name = config.options.default_remote or git.get_default_remote(git_root)
+    if not remote_name then
+        utils.notify("No remote found.", vim.log.levels.ERROR)
         return
     end
 
-    if not git.is_file_tracked(relative_path) then
+    local remote_url = git.get_remote_url(remote_name, git_root)
+    if not remote_url then
+        utils.notify("No remote URL found for '" .. remote_name .. "'.", vim.log.levels.ERROR)
+        return
+    end
+
+    if pin_type == "root" then
+        open_url(url_builder.sanitize_remote_url(remote_url))
+        return
+    end
+
+    local relative_path = git.get_file_relative_path(git_root)
+    if not relative_path then
+        utils.notify("No file open or file is outside the repository.", vim.log.levels.ERROR)
+        return
+    end
+
+    if not git.is_file_tracked(relative_path, git_root) then
         utils.notify("File is untracked by Git.", vim.log.levels.ERROR)
         return
     end
 
-    local branch_or_tag, ref_type
+    local branch_or_tag
     if pin_type == "tag" then
-        branch_or_tag = git.get_latest_tag()
+        branch_or_tag = git.get_latest_tag(git_root)
         if not branch_or_tag then
+            utils.notify("No tags found in repository.", vim.log.levels.ERROR)
             return
         end
     elseif pin_type == "branch" then
-        branch_or_tag, ref_type = git.get_current_branch_or_commit()
-        if not branch_or_tag or ref_type ~= "branch" then
-            utils.notify("Cannot use 'branch' pin type in detached HEAD state.", vim.log.levels.ERROR)
+        local branch = git.get_current_branch(git_root)
+        if not branch then
+            if git.is_detached_head(git_root) then
+                utils.notify("Cannot use 'branch' in detached HEAD state. Use 'commit' instead.", vim.log.levels.ERROR)
+            else
+                utils.notify("Could not determine current branch.", vim.log.levels.ERROR)
+            end
             return
         end
+        branch_or_tag = branch
     elseif pin_type == "commit" then
         if specific_commit then
             if not specific_commit:match("^[0-9a-fA-F]+$") then
@@ -132,60 +177,32 @@ function M.open_in_browser(opts)
             end
             branch_or_tag = specific_commit
         else
-            branch_or_tag = git.get_current_commit_hash()
+            branch_or_tag = git.get_current_commit_hash(git_root)
             if not branch_or_tag then
+                utils.notify("Could not determine current commit.", vim.log.levels.ERROR)
                 return
             end
         end
     end
 
-    local has_changes = git.has_uncommitted_changes(relative_path)
+    local has_changes = git.has_uncommitted_changes(relative_path, git_root)
     local line_info = nil
 
     if has_changes and not config.options.allow_line_numbers_with_uncommitted_changes then
-        utils.notify(
-            "Warning: Uncommitted changes detected in this file. Line number removed from URL.",
-            vim.log.levels.WARN
-        )
+        utils.notify("Warning: Uncommitted changes detected. Line number removed from URL.", vim.log.levels.WARN)
     else
         if has_changes then
             utils.notify(
-                "Warning: Uncommitted changes detected in this file. Line numbers may not be accurate.",
+                "Warning: Uncommitted changes detected. Line numbers may not be accurate.",
                 vim.log.levels.WARN
             )
         end
-        local start_line, end_line
-
-        if opts.range > 0 then
-            -- Command was called with a range
-            start_line = opts.line1
-            end_line = opts.line2
-        else
-            local mode = vim.fn.mode()
-            if mode == "v" or mode == "V" or mode == "\22" then
-                -- Visual mode: get the visually selected lines
-                start_line = vim.fn.line("v")
-                end_line = vim.fn.line(".")
-            else
-                -- Normal mode: use the current cursor line
-                start_line = vim.api.nvim_win_get_cursor(0)[1]
-                end_line = start_line
-            end
-        end
-
-        if start_line > end_line then
-            start_line, end_line = end_line, start_line
-        end
-
-        if start_line == end_line then
-            line_info = { line_number = start_line }
-        else
-            line_info = { start_line = start_line, end_line = end_line }
-        end
+        line_info = get_line_info(opts)
     end
 
     local url = url_builder.build_url(remote_url, branch_or_tag, relative_path, line_info)
     if not url then
+        utils.notify("Unsupported git provider.", vim.log.levels.ERROR)
         return
     end
 
