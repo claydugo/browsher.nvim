@@ -1,4 +1,5 @@
-*browsher.txt*Create commit pinned links to git(hub | lab) hosted files/lines directly from Neovim
+*browsher.txt* Create commit pinned links to git(hub | lab) hosted files/lines directly from Neovim
+                                  For NVIM v0.8.0    Last change: 2026 July 13
 
 ==============================================================================
 Table of Contents                                 *browsher-table-of-contents*
