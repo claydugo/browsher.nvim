@@ -19,7 +19,15 @@ local function check_open_command(ok, warn, error_fn)
         end
     else
         local os_name = (vim.uv or vim.loop).os_uname().sysname
-        if os_name == "Linux" then
+        if vim.fn.has("wsl") == 1 then
+            if vim.fn.executable("wslview") == 1 then
+                ok("WSL detected, {wslview} will be used")
+            elseif vim.fn.executable("explorer.exe") == 1 then
+                ok("WSL detected, {explorer.exe} will be used")
+            else
+                warn("neither {wslview} nor {explorer.exe} is available, set `open_cmd` in configuration")
+            end
+        elseif os_name == "Linux" then
             if vim.fn.executable("xdg-open") == 1 then
                 ok("{xdg-open} is available")
             else
