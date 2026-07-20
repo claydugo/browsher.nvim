@@ -18,7 +18,7 @@ local function check_open_command(ok, warn, error_fn)
             ok("{" .. cmd .. "} is executable")
         end
     else
-        local os_name = vim.loop.os_uname().sysname
+        local os_name = (vim.uv or vim.loop).os_uname().sysname
         if os_name == "Linux" then
             if vim.fn.executable("xdg-open") == 1 then
                 ok("{xdg-open} is available")
@@ -86,14 +86,14 @@ function M.check()
     end
 
     -- Check remotes
-    local remote_name = git.get_default_remote(git_root)
+    local remotes = git.list_remotes(git_root)
+    local remote_name = remotes[1]
     if not remote_name then
         warn("no remotes configured in this repository")
         check_open_command(ok, warn, error_fn)
         return
     end
 
-    local remotes = vim.fn.systemlist("git -C " .. vim.fn.fnameescape(git_root) .. " remote")
     ok("remote(s) available: `" .. table.concat(remotes, "`, `") .. "`")
 
     local cfg = require("browsher.config")

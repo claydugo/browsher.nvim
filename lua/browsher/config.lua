@@ -60,12 +60,11 @@ M.options = {
 function M.setup(user_options)
     user_options = user_options or {}
 
+    local merged = vim.tbl_extend("force", M.options, user_options)
     if user_options.providers then
-        M.options.providers = vim.tbl_deep_extend("force", M.options.providers, user_options.providers)
-        user_options.providers = nil
+        merged.providers = vim.tbl_deep_extend("force", M.options.providers, user_options.providers)
     end
-
-    M.options = vim.tbl_extend("force", M.options, user_options)
+    M.options = merged
 end
 
 return M

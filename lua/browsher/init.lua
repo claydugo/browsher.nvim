@@ -14,11 +14,12 @@ local function get_open_command()
         if type(config.options.open_cmd) == "string" then
             return { config.options.open_cmd }
         else
-            return config.options.open_cmd
+            -- Copy so appending the URL never mutates the user's config.
+            return vim.list_extend({}, config.options.open_cmd)
         end
     end
 
-    local os_name = vim.loop.os_uname().sysname
+    local os_name = (vim.uv or vim.loop).os_uname().sysname
 
     if os_name == "Linux" then
         return { "xdg-open" }
@@ -54,7 +55,10 @@ for Browsher to function.
 
     table.insert(open_cmd, url)
 
-    vim.fn.jobstart(open_cmd, { detach = true })
+    local job_id = vim.fn.jobstart(open_cmd, { detach = true })
+    if job_id <= 0 then
+        utils.notify("Failed to run '" .. open_cmd[1] .. "'. Is it installed and in PATH?", vim.log.levels.ERROR)
+    end
 end
 
 --- Parse command arguments into pin type and optional commit.
@@ -108,6 +112,11 @@ end
 ---
 ---@param opts table Options passed from the user command.
 function M.open_in_browser(opts)
+    if vim.fn.executable("git") ~= 1 then
+        utils.notify("Git is not installed or not in PATH.", vim.log.levels.ERROR)
+        return
+    end
+
     local pin_type, specific_commit = parse_args(opts.args)
 
     local valid_pin_types = { commit = true, branch = true, tag = true, root = true }

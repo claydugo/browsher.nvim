@@ -44,8 +44,20 @@ function M.build_url(remote_url, branch_or_tag, relative_path, line_info)
 
     local providers = config.options.providers
 
-    for provider, data in pairs(providers) do
-        if remote_url:match(provider) then
+    -- Sort provider keys (longest first, then alphabetically) so matching is
+    -- deterministic when a URL matches several providers, and use plain
+    -- substring matching so keys like "github.com" are not Lua patterns.
+    local provider_keys = vim.tbl_keys(providers)
+    table.sort(provider_keys, function(a, b)
+        if #a ~= #b then
+            return #a > #b
+        end
+        return a < b
+    end)
+
+    for _, provider in ipairs(provider_keys) do
+        local data = providers[provider]
+        if remote_url:find(provider, 1, true) then
             local url = string.format(data.url_template, remote_url, branch_or_tag, relative_path)
             if line_info then
                 local line_part = ""
