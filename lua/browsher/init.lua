@@ -19,6 +19,13 @@ local function get_open_command()
         end
     end
 
+    if vim.fn.has("wsl") == 1 then
+        if vim.fn.executable("wslview") == 1 then
+            return { "wslview" }
+        end
+        return { "explorer.exe" }
+    end
+
     local os_name = (vim.uv or vim.loop).os_uname().sysname
 
     if os_name == "Linux" then
