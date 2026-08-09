@@ -8,6 +8,7 @@
 
 - **Open files in the browser**: Quickly open the current file in your remote Git repository's web interface.
 - **Line and Range Support**: Supports opening specific lines or ranges, including multiline selections from visual mode.
+- **Short commit hashes**: Trim the 40 character hash down with [`commit_length`](#shorter-urls), for links that stay readable.
 - **Customizable providers**: Support for GitHub, GitLab, Sourcehut, and the ability to specify custom git web interfaces.
 - **Custom open commands**: Specify custom commands to open URLs (e.g., use a specific browser).
 
@@ -91,6 +92,30 @@ require("browsher").setup({
     },
 })
 ```
+
+## Shorter URLs
+
+Pinning to a commit gives a link that never drifts. The full 40 character hash makes that link long.
+
+Set `commit_length` to trim the hash:
+
+```lua
+require("browsher").setup({ commit_length = 20 })
+```
+
+Default, `commit_length = nil`:
+
+```
+https://github.com/claydugo/browsher.nvim/blob/50d537a0a517505a6eb97288be5e789d89ba658c/lua/browsher/git.lua#L211-L229
+```
+
+With `commit_length = 20`:
+
+```
+https://github.com/claydugo/browsher.nvim/blob/50d537a0a517505a6eb9/lua/browsher/git.lua#L211-L229
+```
+
+Both links point at the same commit. 20 is a good starting point. It halves the hash and stays unambiguous in large repositories. Git expands the hash anyway if the length you pick is too short.
 
 ## Key Mappings
 
