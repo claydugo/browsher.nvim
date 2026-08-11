@@ -1,5 +1,23 @@
 local M = {}
 
+M.providers = {
+    ["github.com"] = {
+        url_template = "%s/blob/%s/%s",
+        single_line_format = "#L%d",
+        multi_line_format = "#L%d-L%d",
+    },
+    ["gitlab.com"] = {
+        url_template = "%s/-/blob/%s/%s",
+        single_line_format = "#L%d",
+        multi_line_format = "#L%d-%d",
+    },
+    ["sr.ht"] = {
+        url_template = "%s/tree/%s/item/%s",
+        single_line_format = "#L%d",
+        multi_line_format = "#L%d",
+    },
+}
+
 --- Default configuration options.
 M.options = {
     --- Default remote name (e.g., 'origin').
@@ -35,23 +53,7 @@ M.options = {
     ---   },
     --- }
     --- ```
-    providers = {
-        ["github.com"] = {
-            url_template = "%s/blob/%s/%s",
-            single_line_format = "#L%d",
-            multi_line_format = "#L%d-L%d",
-        },
-        ["gitlab.com"] = {
-            url_template = "%s/-/blob/%s/%s",
-            single_line_format = "#L%d",
-            multi_line_format = "#L%d-%d",
-        },
-        ["sr.ht"] = {
-            url_template = "%s/tree/%s/item/%s",
-            single_line_format = "#L%d",
-            multi_line_format = "#L%d",
-        },
-    },
+    providers = M.providers,
 }
 
 --- Setup user configuration.

@@ -93,6 +93,18 @@ require("browsher").setup({
 })
 ```
 
+## Self-hosted providers
+
+Reuse a built-in provider definition for a self-hosted instance:
+
+```lua
+require("browsher").setup({
+    providers = {
+        ["gitlab.example.com"] = require("browsher").providers["gitlab.com"],
+    },
+})
+```
+
 ## Shorter URLs
 
 Pinning to a commit gives a link that never drifts. The full 40 character hash makes that link long.

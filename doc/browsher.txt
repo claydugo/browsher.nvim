@@ -1,5 +1,5 @@
 *browsher.txt* Create commit pinned links to git(hub | lab) hosted files/lines directly from Neovim
-                                For NVIM v0.8.0    Last change: 2026 August 09
+                                For NVIM v0.8.0    Last change: 2026 August 11
 
 ==============================================================================
 Table of Contents                                 *browsher-table-of-contents*
@@ -8,6 +8,7 @@ Table of Contents                                 *browsher-table-of-contents*
 2. Features                                                |browsher-features|
 3. Installation                                        |browsher-installation|
 4. Configuration                                      |browsher-configuration|
+  - Self-hosted providers       |browsher-configuration-self-hosted-providers|
   - Shorter URLs                         |browsher-configuration-shorter-urls|
   - Key Mappings                         |browsher-configuration-key-mappings|
 5. Usage                                                      |browsher-usage|
@@ -120,6 +121,19 @@ DEFAULT OPTIONS
                 single_line_format = "#L%d",
                 multi_line_format = "#L%d",
             },
+        },
+    })
+<
+
+
+SELF-HOSTED PROVIDERS       *browsher-configuration-self-hosted-providers*
+
+Reuse a built-in provider definition for a self-hosted instance:
+
+>lua
+    require("browsher").setup({
+        providers = {
+            ["gitlab.example.com"] = require("browsher").providers["gitlab.com"],
         },
     })
 <
