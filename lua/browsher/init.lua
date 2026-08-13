@@ -4,7 +4,9 @@ local url_builder = require("browsher.url")
 local utils = require("browsher.utils")
 
 --- Main module for browsher.nvim.
-local M = {}
+local M = {
+    providers = config.providers,
+}
 
 --- Get the command to open URLs based on the OS or user configuration.
 ---
