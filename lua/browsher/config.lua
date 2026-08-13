@@ -53,7 +53,7 @@ M.options = {
     ---   },
     --- }
     --- ```
-    providers = M.providers,
+    providers = vim.deepcopy(M.providers),
 }
 
 --- Setup user configuration.
